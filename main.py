@@ -4,8 +4,6 @@ import time
 from flask import Flask, render_template, request, url_for, jsonify
 from pytz import timezone
 
-
-
 '''
 Day of week extension: 
 - params:
@@ -13,7 +11,23 @@ Day of week extension:
 		- unix timezone - "America/New_York"
 '''
 
+# day of week in timezone
+def weekday(dt, tz):
+	names = ['Monday', 'Tuesday', 'Wednesday', 
+	'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+	if type(dt) == datetime.datetime:
+		return names[dt.weekday()]
+
+	try:
+		# make datetime
+		d = datetime.datetime.utcfromtimestamp(dt)
+		# localize to desired tz
+		d = timezone(tz).localize(d)
+		# return appropriate day name
+		return names[d.weekday()];
+	except: 
+		return names[datetime.datetime.utcfromtimestamp(dt).weekday()]
 
 
 app = Flask(__name__)
