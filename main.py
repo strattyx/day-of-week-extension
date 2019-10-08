@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 def weekday(dt):
 	names = ['Monday', 'Tuesday', 'Wednesday', 
-			'Thursday', 'Friday', 'Saturday', 'Sunday']
+	'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 	if type(dt) == datetime.datetime:
 		return names[dt.weekday()]
@@ -19,19 +19,20 @@ def weekday(dt):
 # used for normal operation
 @app.route('/invoke/realtime', methods = ['POST'])
 def realtime():
-    # in this example we don't need to use arguments
-    # if we did, we could do like this
-    #body = request.get_json()
-    #args = body['arguments']
-    
-    return weekday(time.time())
+	# in this example we don't need to use arguments
+	# if we did, we could do like this
+	#body = request.get_json()
+	#args = body['arguments']
+
+	return weekday(time.time())
 
 
 # used for backtests
 @app.route('/invoke/timeline', methods = ['POST'])
 def timeline(): 
-    body = request.get_json()
-    start, end = body['period']
+	body = request.get_json()
+	start, end = body['period']
+	print('Timeline request:', body)
 
 	# convert from relative miliseconds to absolute timestamps
 	now = int(time.time())
@@ -47,21 +48,20 @@ def timeline():
 	# start with weekday at start of period
 	ret['start'] = { 'value' : weekday(start) }
 	
-	# truncate to day
-	d = datetime.datetime.fromtimestamp(start).date()
+	# truncate to date
+	ts = to_epoch(datetime.datetime.fromtimestamp(start).date())
 
-	# add entry to update day of week in timeline
+	# add entry to update weekday each day
 	while True:
-		d += datetime.timedelta(days=1)
-		ts = to_epoch(d)
+		ts += 24 * 60 * 60 
 		if ts < end:
-			ret[ts] = { 'value' : weekday(d) }
+			ret[ts * 1000 - now] = { 'value' : weekday(ts) }
 		else:
 			break
 
-    return json.dumps({
-    	'timeline' : ret
-    });
+	return json.dumps({
+		'timeline' : ret
+	});
 
 if __name__ == '__main__':
-    app.run(debug=True)
+	app.run(debug=True)
