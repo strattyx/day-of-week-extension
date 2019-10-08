@@ -1,37 +1,40 @@
 import json
 import datetime
 import time
-
 from flask import Flask, render_template, request, url_for, jsonify
+from pytz import timezone
+
+
+
+'''
+Day of week extension: 
+- params:
+	+ timezone:
+		- unix timezone - "America/New_York"
+'''
+
+
+
 
 app = Flask(__name__)
-
-def weekday(dt):
-	names = ['Monday', 'Tuesday', 'Wednesday', 
-	'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-	if type(dt) == datetime.datetime:
-		return names[dt.weekday()]
-	else:
-		return names[datetime.datetime.fromtimestamp(dt).weekday()]
 
 
 # used for normal operation
 @app.route('/invoke/realtime', methods = ['POST'])
 def realtime():
-	# in this example we don't need to use arguments
-	# if we did, we could do like this
-	#body = request.get_json()
-	#args = body['arguments']
+	body = request.get_json()
+	args = body['arguments']
+	tz = args['timezone']
 
-	return weekday(time.time())
-
+	return weekday(time.time(), tz)
 
 # used for backtests
 @app.route('/invoke/timeline', methods = ['POST'])
 def timeline(): 
 	body = request.get_json()
 	start, end = body['period']
+	tz = body['arguments']['timezone']
+
 	print('Timeline request:', body)
 
 	# convert from relative miliseconds to absolute timestamps
@@ -48,14 +51,18 @@ def timeline():
 	# start with weekday at start of period
 	ret['start'] = { 'value' : weekday(start) }
 	
+	# get local datetime
+	dt = datetime.datetime.utcfromtimestamp(start)
+	dt = timezone(tz).localize(dt)
+
 	# truncate to date
-	ts = to_epoch(datetime.datetime.fromtimestamp(start).date())
+	ts = to_epoch(dt.date())
 
 	# add entry to update weekday each day
 	while True:
 		ts += 24 * 60 * 60 
 		if ts < end:
-			ret[ts * 1000 - now] = { 'value' : weekday(ts) }
+			ret[ts * 1000 - now] = { 'value' : weekday(ts, tz) }
 		else:
 			break
 
@@ -65,3 +72,6 @@ def timeline():
 
 if __name__ == '__main__':
 	app.run(debug=True)
+
+
+
