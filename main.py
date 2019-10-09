@@ -38,16 +38,16 @@ app = Flask(__name__)
 def realtime():
 	body = request.get_json()
 	args = body['arguments']
-	tz = args['timezone']
+	tz = args['Timezone']
 
-	return weekday(time.time(), tz)
+	return json.dumps({ "return" : weekday(time.time(), tz) })
 
 # used for backtests
 @app.route('/invoke/timeline', methods = ['POST'])
 def timeline(): 
 	body = request.get_json()
 	start, end = body['period']
-	tz = body['arguments']['timezone']
+	tz = body['arguments']['Timezone']
 
 	print('Timeline request:', body)
 
@@ -63,7 +63,7 @@ def timeline():
 		return time.mktime(dt.timetuple())
 
 	# start with weekday at start of period
-	ret['start'] = { 'value' : weekday(start) }
+	ret['start'] = { 'value' : weekday(start, tz) }
 	
 	# get local datetime
 	dt = datetime.datetime.utcfromtimestamp(start)
@@ -76,7 +76,7 @@ def timeline():
 	while True:
 		ts += 24 * 60 * 60 
 		if ts < end:
-			ret[ts * 1000 - now] = { 'value' : weekday(ts, tz) }
+			ret[int(ts * 1000 - now)] = { 'value' : weekday(ts, tz) }
 		else:
 			break
 
@@ -85,7 +85,7 @@ def timeline():
 	});
 
 if __name__ == '__main__':
-	app.run(debug=True)
+	app.run(port=5051)
 
 
 
