@@ -1,7 +1,7 @@
 import json
 import datetime
 import pytz
-import dateutil
+import dateutil.parser
 from flask import Flask, render_template, request, url_for, jsonify
 
 '''
@@ -11,17 +11,16 @@ Day of week extension:
     - unix timezone - "America/New_York", "UTC", etc.
 '''
 
+# set timezone
 def localize(dt, tz):
-	return pytz.timezone(tz).localize(dt)
+	return dt.astimezone(pytz.timezone(tz))
 
 # day of week in timezone
-def weekday(dt, tz):
+def weekday(dt):
 	names = [ 'Monday', 'Tuesday', 'Wednesday', 
 		  'Thursday', 'Friday', 'Saturday',
 		  'Sunday' ]
-
-	if type(dt) == datetime.datetime:
-		return names[dt.weekday()]
+	return names[dt.weekday()]
 
 
 app = Flask(__name__)
@@ -31,10 +30,10 @@ app = Flask(__name__)
 @app.route('/invoke/realtime', methods = ['POST'])
 def realtime():
 	body = request.get_json()
-	args = body['arguments']
-	tz = args['Timezone']
-	now = datetime.datetime.today()
-	return json.dumps({ 'return' : weekday(now, tz) })
+	tz   = body['arguments']['Timezone']
+	now  = datetime.datetime.now()
+	ret  = weekday(localize(now, tz))
+	return json.dumps({ 'return' : ret })
 
 
 
@@ -55,7 +54,7 @@ def timeline():
 	ret = {}
 
 	# initial value is weekday at start of period
-	ret['start'] = { 'value' : weekday(start, tz) }
+	ret['start'] = { 'value' : weekday(start) }
 
 	# truncate to date
 	dt = start.date()
@@ -64,12 +63,15 @@ def timeline():
 	while True:
 		dt += datetime.timedelta(days = 1)
 		if dt < end:
-			ret[dt] = { 'value' : weekday(dt, tz) }
+			ret[dt] = { 'value' : weekday(dt) }
 		else:
 			break
 
+
 	return json.dumps({
-		'timeline' : ret
+		'timeline' : ret, 	# value history
+		'warn' : [],		# warnings for user to see
+		'resolutions' : [],	# why things happened
 	});
 
 
