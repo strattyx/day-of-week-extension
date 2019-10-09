@@ -62,7 +62,7 @@ def timeline():
 	# add entry to update value at 0:00 daily
 	while True:
 		dt += datetime.timedelta(days = 1)
-		if dt < end:
+		if dt <= end.date():
 			ret[dt] = { 'value' : weekday(dt) }
 		else:
 			break
