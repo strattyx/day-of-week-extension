@@ -1,33 +1,27 @@
 import json
 import datetime
-import time
+import pytz
+import dateutil
 from flask import Flask, render_template, request, url_for, jsonify
-from pytz import timezone
 
 '''
 Day of week extension: 
 - params:
-	+ timezone:
-		- unix timezone - "America/New_York"
+  + timezone:
+    - unix timezone - "America/New_York", "UTC", etc.
 '''
+
+def localize(dt, tz):
+	return pytz.timezone(tz).localize(dt)
 
 # day of week in timezone
 def weekday(dt, tz):
-	names = ['Monday', 'Tuesday', 'Wednesday', 
-	'Thursday', 'Friday', 'Saturday', 'Sunday']
+	names = [ 'Monday', 'Tuesday', 'Wednesday', 
+		  'Thursday', 'Friday', 'Saturday',
+		  'Sunday' ]
 
 	if type(dt) == datetime.datetime:
 		return names[dt.weekday()]
-
-	try:
-		# make datetime
-		d = datetime.datetime.utcfromtimestamp(dt)
-		# localize to desired tz
-		d = timezone(tz).localize(d)
-		# return appropriate day name
-		return names[d.weekday()];
-	except: 
-		return names[datetime.datetime.utcfromtimestamp(dt).weekday()]
 
 
 app = Flask(__name__)
@@ -39,8 +33,10 @@ def realtime():
 	body = request.get_json()
 	args = body['arguments']
 	tz = args['Timezone']
+	now = datetime.datetime.today()
+	return json.dumps({ 'return' : weekday(now, tz) })
 
-	return json.dumps({ "return" : weekday(time.time(), tz) })
+
 
 # used for backtests
 @app.route('/invoke/timeline', methods = ['POST'])
@@ -51,32 +47,24 @@ def timeline():
 
 	print('Timeline request:', body)
 
-	# convert from relative miliseconds to absolute timestamps
-	now = int(time.time())
-	start = start / 1000 + now
-	end = end / 1000 + now
+	# get period start and end points
+	start = localize(dateutil.parser.parse(start), tz)
+	end = localize(dateutil.parser.parse(end), tz)
 
-	# this is our timeline
+	# value timeline
 	ret = {}
 
-	def to_epoch(dt):
-		return time.mktime(dt.timetuple())
-
-	# start with weekday at start of period
+	# initial value is weekday at start of period
 	ret['start'] = { 'value' : weekday(start, tz) }
-	
-	# get local datetime
-	dt = datetime.datetime.utcfromtimestamp(start)
-	dt = timezone(tz).localize(dt)
 
 	# truncate to date
-	ts = to_epoch(dt.date())
+	dt = start.date()
 
-	# add entry to update weekday each day
+	# add entry to update value at 0:00 daily
 	while True:
-		ts += 24 * 60 * 60 
-		if ts < end:
-			ret[int(ts * 1000 - now)] = { 'value' : weekday(ts, tz) }
+		dt += datetime.timedelta(days = 1)
+		if dt < end:
+			ret[dt] = { 'value' : weekday(dt, tz) }
 		else:
 			break
 
@@ -84,8 +72,18 @@ def timeline():
 		'timeline' : ret
 	});
 
+
+	'''
+	{ # initial value of monday gets updated daily
+		'start' : 'Monday',
+		'2001-1-1' : 'Tuesday',
+		'2001-1-2' : 'Wednesday',
+		...
+	}
+	'''
+
+
+# start server
 if __name__ == '__main__':
 	app.run(port=5051)
-
-
 
