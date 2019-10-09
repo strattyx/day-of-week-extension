@@ -63,7 +63,7 @@ def timeline():
 	while True:
 		dt += datetime.timedelta(days = 1)
 		if dt <= end.date():
-			ret[dt] = { 'value' : weekday(dt) }
+			ret[str(dt)] = { 'value' : weekday(dt) }
 		else:
 			break
 
