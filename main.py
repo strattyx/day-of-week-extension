@@ -38,12 +38,19 @@ def realtime():
 
 
 # used for backtests
-@app.route('/invoke/timeline', methods = ['POST'])
-def timeline(): 
+@app.route('/invoke/historic', methods = ['POST'])
+def historic(): 
 	body = request.get_json()
 	start, end = body['period']
 	tz = body['arguments']['Timezone']
 
+	# we were expecting a constant timezone
+	if (body['ts'] != '*')
+		return json.dumps({
+			'timeline' : { },
+			'warn' : [ 'expected constant timezone' ],
+		})
+		
 	print('Timeline request:', body)
 
 	# get period start and end points
@@ -72,7 +79,7 @@ def timeline():
 		'timeline' : ret, 	# value history
 		'warn' : [],		# warnings for user to see
 		'resolutions' : [],	# why things happened
-	});
+	})
 
 
 	'''
