@@ -27,8 +27,8 @@ app = Flask(__name__)
 
 
 # used for normal operation
-@app.route('/invoke/realtime', methods = ['POST'])
-def realtime():
+@app.route('/invoke/live', methods = ['POST'])
+def live():
 	body = request.get_json()
 	tz   = body['arguments']['Timezone']
 	now  = datetime.datetime.now()
